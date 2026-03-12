@@ -318,7 +318,6 @@ const firebaseConfig = {
   appId: "1:228464294329:web:5517f6ed1a3fe8c56bde68"
 };
 
-
 const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
 const teamsRef = ref(db, 'teams');
@@ -712,7 +711,7 @@ pickRole('team');
 renderBoard();
 
 // Show setup banner if Firebase config is still placeholder
-if(firebaseConfig.apiKey==='AIzaSyCUzT5Yjpgdx9crbfQeSHlFF8O_pzNNURU'){
+if(firebaseConfig.apiKey==='YOUR_API_KEY'||!firebaseConfig.databaseURL||firebaseConfig.databaseURL.indexOf('YOUR_PROJECT')>=0){
   document.getElementById('fb-setup-banner').style.display='block';
 }
 
