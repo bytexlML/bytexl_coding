@@ -294,11 +294,10 @@ body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-he
   </div>
 </div>
 
-<!-- Firebase SDK -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, onValue, update, remove, get }
-  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+<!-- Firebase SDK (compat — works when opening file directly) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script>
 
 // ─────────────────────────────────────────────
 //  🔥 PASTE YOUR FIREBASE CONFIG HERE
@@ -318,9 +317,9 @@ const firebaseConfig = {
   appId: "1:228464294329:web:5517f6ed1a3fe8c56bde68"
 };
 
-const app = initializeApp(firebaseConfig);
-const db  = getDatabase(app);
-const teamsRef = ref(db, 'teams');
+const app = firebase.initializeApp(firebaseConfig);
+const db  = firebase.database();
+const teamsRef = db.ref('teams');
 
 // ─────────────────────────────────────────────
 //  App state
@@ -340,9 +339,13 @@ var pendingReg = null;
 // ─────────────────────────────────────────────
 //  Real-time listener — syncs ALL devices
 // ─────────────────────────────────────────────
-onValue(teamsRef, function(snapshot) {
+teamsRef.on('value', function(snapshot) {
   var data = snapshot.val() || {};
   teams = Object.values(data).filter(function(t){ return t && t.name; });
+  console.log('[Firebase] teams updated:', teams.length, teams.map(function(t){return t.name;}));
+  // Show a visible error banner if DB is empty and we've been connected a while
+  var banner = document.getElementById('fb-setup-banner');
+  if(banner) banner.style.display='none';
   // Keep currentTeam reference alive after remote update
   if (currentTeam) {
     var updated = teams.find(function(t){ return t.name === currentTeam.name; });
@@ -356,10 +359,17 @@ onValue(teamsRef, function(snapshot) {
   renderBoard();
   renderMini();
   updateTC();
+}, function(error) {
+  console.error('[Firebase] READ ERROR:', error.code, error.message);
+  var banner = document.getElementById('fb-setup-banner');
+  if(banner){
+    banner.style.display='block';
+    banner.innerHTML='🔴 <strong>Firebase error: ' + error.code + '</strong> — Check Realtime Database Rules: set .read and .write to true.';
+  }
 });
 
 // Connection state indicator
-onValue(ref(db,'.info/connected'), function(snap){
+db.ref('.info/connected').on('value', function(snap){
   var dot = document.getElementById('fb-dot-circle');
   if(dot) dot.style.background = snap.val() ? 'var(--accent)' : 'var(--danger)';
 });
@@ -493,7 +503,7 @@ function doLogin(){
   if(currentRole==='board'){ showPage('pg-board'); renderBoard(); return; }
   if(currentRole==='admin'){
     if(document.getElementById('in-apass').value!==ADMIN_PASS){ err.textContent='Wrong password.'; err.style.display='block'; return; }
-    showPage('pg-admin'); buildSidebar(); return;
+    showPage('pg-admin'); buildSidebar(); renderAdminBoard(); renderBoard(); return;
   }
   var tname=document.getElementById('in-tname').value.trim();
   var tid=document.getElementById('in-tid').value.trim();
@@ -518,7 +528,7 @@ function confirmReg(){
   var key=pendingReg.name.replace(/[.#$\[\]]/g,'_');
   pendingReg=null;
   closeOv('ov-confirm-reg');
-  set(ref(db,'teams/'+key), t).then(function(){ enterTeam(t); });
+  db.ref('teams/'+key).set(t).then(function(){ enterTeam(t); });
 }
 
 function enterTeam(t){
@@ -635,7 +645,7 @@ function adjustScore(name,delta){
   var patch={score:newScore};
   if(delta>0&&currentQ){ var k='r'+currentQ.round; patch[k]=(t[k]||0)+delta; }
   var key=name.replace(/[.#$\[\]]/g,'_');
-  update(ref(db,'teams/'+key), patch);
+  db.ref('teams/'+key).update(patch);
 }
 
 function renderAdminBoard(){
@@ -667,7 +677,7 @@ function doReset(){
     patch['teams/'+key+'/r2']=0;
     patch['teams/'+key+'/r3']=0;
   });
-  update(ref(db,'/'), patch).then(function(){ closeOv('ov-reset'); });
+  db.ref('/').update(patch).then(function(){ closeOv('ov-reset'); });
 }
 
 function addTeamManual(){
@@ -678,7 +688,7 @@ function addTeamManual(){
   var key=n.replace(/[.#$\[\]]/g,'_');
   var t={name:n,leadId:id,email:em,score:0,r1:0,r2:0,r3:0};
   document.getElementById('at-name').value=''; document.getElementById('at-id').value=''; document.getElementById('at-email').value='';
-  set(ref(db,'teams/'+key), t).then(function(){ closeOv('ov-addteam'); });
+  db.ref('teams/'+key).set(t).then(function(){ closeOv('ov-addteam'); });
 }
 
 function renderBoard(){
