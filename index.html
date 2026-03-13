@@ -342,7 +342,7 @@ var pendingReg = null;
 // ─────────────────────────────────────────────
 onValue(teamsRef, function(snapshot) {
   var data = snapshot.val() || {};
-  teams = Object.values(data);
+  teams = Object.values(data).filter(function(t){ return t && t.name; });
   // Keep currentTeam reference alive after remote update
   if (currentTeam) {
     var updated = teams.find(function(t){ return t.name === currentTeam.name; });
@@ -493,7 +493,7 @@ function doLogin(){
   if(currentRole==='board'){ showPage('pg-board'); renderBoard(); return; }
   if(currentRole==='admin'){
     if(document.getElementById('in-apass').value!==ADMIN_PASS){ err.textContent='Wrong password.'; err.style.display='block'; return; }
-    showPage('pg-admin'); buildSidebar(); renderAdminBoard(); return;
+    showPage('pg-admin'); buildSidebar(); return;
   }
   var tname=document.getElementById('in-tname').value.trim();
   var tid=document.getElementById('in-tid').value.trim();
@@ -640,6 +640,7 @@ function adjustScore(name,delta){
 
 function renderAdminBoard(){
   var el=document.getElementById('a-board');
+  if(!el) return;
   var sorted=teams.slice().sort(function(a,b){ return b.score-a.score; });
   var rk=['gold','silver','bronze'];
   el.innerHTML=sorted.map(function(t,i){
